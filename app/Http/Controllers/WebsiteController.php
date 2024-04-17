@@ -2,84 +2,79 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\WebsiteRequest;
+use App\Http\Resources\WebsiteCollection;
+use App\Http\Resources\WebsiteResource;
 use App\Models\Website;
-use Illuminate\Contracts\Foundation\Application;
-use Illuminate\Contracts\View\Factory;
-use Illuminate\Contracts\View\View;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Validator;
 
 class WebsiteController extends Controller
 {
+    use AuthorizesRequests;
+
     /**
-     * Get all websites with pagination
-     * @return Application|Factory|View|\Illuminate\Foundation\Application|JsonResponse
+     * Determine if the user is authorized to make this request.
+     *
+     * @return bool
      */
-    public function index()
+    public function authorize()
     {
-        if (!auth('sanctum')->check()) {
-            return response()->json(['error' => 'Please login.'], 404);
-        }
-        $websites = Website::paginate(20);
-        return view('website.index', compact('websites'));
+        return Auth::check();
     }
 
     /**
-     * Set new website
-     * @param Request $request
-     * @return JsonResponse|RedirectResponse
+     * Get all websites with pagination
+     *
+     * @throws AuthorizationException
      */
-    public function store(Request $request)
+    public function index(WebsiteRequest $websiteRequest): WebsiteCollection
+    {
+        $this->authorize('viewAny', Website::class);
+
+        $limit = $websiteRequest->input('limit', 20);
+        $page = $websiteRequest->input('page', 1);
+
+        return new WebsiteCollection(Website::query()->paginate($limit, ['*'], 'page', $page));
+    }
+
+    /**
+     * Create new resource
+     */
+    public function store(Request $request): JsonResponse
     {
         $data = $request->all();
         $validator = Validator::make($data, ['url' => 'required|url']);
         if ($validator->fails()) {
             return response()->json(['error' => $validator->errors()], 401);
         }
-        Website::create($data);
-        return redirect()->route('website.index');
+        $resource = Website::create($data);
+
+        return response()->json(new WebsiteResource($resource));
     }
 
     /**
-     * Show create website view
-     * @return Application|Factory|View|\Illuminate\Foundation\Application
-     */
-    public function create()
-    {
-        return view('website.create');
-    }
-
-    /**
-     * Show one website's data
+     * Get one website's data
      * @param int $id
-     * @return Application|Factory|View|\Illuminate\Foundation\Application
+     * @return JsonResponse
      */
-    public function show(int $id)
+    public function show(int $id): JsonResponse
     {
         $website = Website::findOrFail($id);
-        return view('website.show', compact('website'));
-    }
-
-    /**
-     * Show website's view for editing
-     * @param int $id
-     * @return Application|Factory|View|\Illuminate\Foundation\Application
-     */
-    public function edit(int $id)
-    {
-        $website = Website::findOrFail($id);
-        return view('website.edit', compact('website'));
+        return response()->json(new WebsiteResource($website));
     }
 
     /**
      * Update website
      * @param Request $request
      * @param int $id
-     * @return JsonResponse|RedirectResponse
+     * @return JsonResponse
      */
-    public function update(Request $request, int $id)
+    public function update(Request $request, int $id): JsonResponse
     {
         $data = Website::findorFail($id);
         $validator = Validator::make($request->all(), ['url' => 'required|url']);
@@ -87,20 +82,18 @@ class WebsiteController extends Controller
             return response()->json(['error' => $validator->errors()], 401);
         }
         $data->url = $request->input('url');
-        $data->save();
-        return redirect()->route('website.show', $id);
+        return response()->json(new WebsiteResource($data->save()));
     }
 
     /**
-     * Delete website and website's reports
+     * Delete website and reports
      * @param int $id
-     * @return RedirectResponse
+     * @return JsonResponse
      */
-    public function destroy(int $id)
+    public function destroy(int $id): JsonResponse
     {
         $website = Website::findOrFail($id);
         $website->reports()->delete();
-        $website->destroy($id);
-        return redirect()->route('website.index');
+        return response()->json(new WebsiteResource($website->destroy($id)));
     }
 }

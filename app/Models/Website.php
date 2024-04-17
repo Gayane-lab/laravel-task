@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class Website extends Model
 {
     use HasFactory;
+
     protected $fillable = ['url'];
     //protected $guarded = [];
 

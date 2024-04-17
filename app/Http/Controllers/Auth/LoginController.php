@@ -24,9 +24,9 @@ class LoginController extends Controller
     /**
      * Users' login function with checking validation
      * @param Request $request
-     * @return array|JsonResponse
+     * @return JsonResponse
      */
-    public function login(Request $request)
+    public function login(Request $request): JsonResponse
     {
         $user_data = $request->all();
         $validator = Validator::make($user_data, [
@@ -40,6 +40,6 @@ class LoginController extends Controller
         if(!$user || !Hash::check($user_data['password'],$user->password)) {
             return response()->json(['error' => 'The provided credentials are incorrect.'], 401);
         }
-        return ['token' => $user->createToken($user->name)->plainTextToken];
+        return response()->json(['token' => $user->createToken($user->name)->plainTextToken]);
     }
 }

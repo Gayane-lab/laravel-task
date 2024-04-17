@@ -26,7 +26,7 @@ class RegisterController extends Controller
      * @param Request $request
      * @return JsonResponse
      */
-    public function register(Request $request)
+    public function register(Request $request): JsonResponse
     {
         $input = $request->all();
         if(!isset($input['password']) || !isset($input['password_confirmation']) || $input['password'] !== $input['password_confirmation']) {
